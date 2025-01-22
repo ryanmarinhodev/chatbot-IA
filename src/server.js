@@ -1,6 +1,6 @@
 import { writeFile } from "fs";
 import { create } from "@wppconnect-team/wppconnect"; //const wppconnect = require("@wppconnect-team/wppconnect");
-import getChatGptResponse from "./api";
+import getChatGptResponse from "./api.js";
 
 create({
   session: "sessionName",

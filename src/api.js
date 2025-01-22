@@ -1,6 +1,6 @@
-const { config } = require("dotenv");
-const { Configuration, OpenAIApi } = require("openai"); //const { Configuration, OpenAIApi } = require("openai");
-//require("dotenv").config({ path: "./.env" });
+import { config } from "dotenv"; //require("dotenv").config({ path: "./.env" });
+import { Configuration, OpenAIApi } from "openai"; //const { Configuration, OpenAIApi } = require("openai");
+
 config();
 
 const openai = new OpenAIApi(
