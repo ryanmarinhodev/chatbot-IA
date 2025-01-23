@@ -1,13 +1,11 @@
-import { config } from "dotenv"; //require("dotenv").config({ path: "./.env" });
-import { Configuration, OpenAIApi } from "openai"; //const { Configuration, OpenAIApi } = require("openai");
+import { config } from "dotenv-vault"; //require("dotenv").config({ path: "./.env" });
+import OpenAI from "openai"; //const { Configuration, OpenAIApi } = require("openai");
 
 config();
 
-const openai = new OpenAIApi(
-  new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 async function getChatGptResponse(userMessage) {
   try {

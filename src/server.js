@@ -3,7 +3,7 @@ import { create } from "@wppconnect-team/wppconnect"; //const wppconnect = requi
 import getChatGptResponse from "./api.js";
 
 create({
-  session: "sessionName",
+  session: "Iniciar bot",
   catchQR: (base64Qr, asciiQR) => {
     console.log(asciiQR); // Optional to log the QR in the terminal
     var matches = base64Qr.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
