@@ -1,23 +1,63 @@
-import { config } from "dotenv-vault"; //require("dotenv").config({ path: "./.env" });
-import OpenAI from "openai"; //const { Configuration, OpenAIApi } = require("openai");
+import { config } from "dotenv";
+import OpenAI from "openai";
+import express from "express";
 
 config();
+const app = express();
+app.use(express.json());
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function getChatGptResponse(userMessage) {
+const ASSISTANT_ID = process.env.ID_ASSISTANT;
+
+async function getChatGptResponse(message) {
   try {
-    const response = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: userMessage }],
+    const thread = await openai.beta.threads.create();
+
+    await openai.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: message,
     });
-    return response.data.choices[0].message.content;
+
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: ASSISTANT_ID,
+    });
+
+    let response;
+    while (!response) {
+      const runStatus = await openai.beta.threads.runs.retrieve(
+        thread.id,
+        run.id
+      );
+      if (runStatus.status === "completed") {
+        const messages = await openai.beta.threads.messages.list(thread.id);
+        response = messages.data[0].content[0].text.value;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    return response;
   } catch (error) {
     console.error("Erro ao conectar com a API do OpenAI", error);
-    return "Desculpe, não consegui entender o que você quis dizer. Poderia reformular?";
+    return "Ocorreu um erro ao conectar assistente";
   }
 }
 
 export default getChatGptResponse;
+// const openai = new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY,
+// });
+
+// async function getChatGptResponse(userMessage) {
+//   try {
+//     const response = await openai.createChatCompletion({
+//       model: "gpt-3.5-turbo",
+//       messages: [{ role: "user", content: userMessage }],
+//     });
+//     return response.data.choices[0].message.content;
+//   } catch (error) {
+//     console.error("Erro ao conectar com a API do OpenAI", error);
+//     return "Desculpe, não consegui entender o que você quis dizer. Poderia reformular?";
+//   }
+// }
