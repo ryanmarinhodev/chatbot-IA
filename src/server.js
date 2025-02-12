@@ -1,11 +1,15 @@
 import { writeFile } from "fs";
-import { create } from "@wppconnect-team/wppconnect"; //const wppconnect = require("@wppconnect-team/wppconnect");
+import { create } from "@wppconnect-team/wppconnect";
 import getChatGptResponse from "./api.js";
 
+const pausedChats = new Map();
+
+const MY_NUMBER = "554598250377@c.us";
+
 create({
-  session: "Iniciar bot",
+  session: "Iniciando bot",
   catchQR: (base64Qr, asciiQR) => {
-    console.log(asciiQR); // Optional to log the QR in the terminal
+    console.log(asciiQR);
     var matches = base64Qr.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
       response = {};
 
@@ -13,10 +17,9 @@ create({
       return new Error("Invalid input string");
     }
     response.type = matches[1];
-    response.data = new Buffer.from(matches[2], "base64");
+    response.data = Buffer.from(matches[2], "base64");
 
-    var imageBuffer = response;
-    writeFile("out.png", imageBuffer["data"], "binary", function (err) {
+    writeFile("out.png", response.data, "binary", function (err) {
       if (err != null) {
         console.log(err);
       }
@@ -25,31 +28,40 @@ create({
   logQR: false,
 })
   .then((client) => {
-    console.log("Bot conectado ao whatsapp");
+    console.log("✅ Bot conectado ao WhatsApp");
 
-    client.onMessage(async (message) => {
-      if (message.type === "chat") {
-        console.log(`Mensagem recebida de ${message.from}: ${message.body}`);
+    client.onAnyMessage(async (message) => {
+      if (message.type !== "chat") return;
 
-        const response = await getChatGptResponse(message.body);
-        await client.sendText(message.from, response);
+      const chatID = message.from;
+      const senderID = message.sender.id;
+      const isFromMe = senderID === MY_NUMBER;
+
+      console.log(`📩 Mensagem recebida de ${chatID}: ${message.body}`);
+      console.log(`🔍 Quem enviou: ${senderID} (Eu? ${isFromMe})`);
+
+      if (pausedChats.has(chatID)) {
+        console.log(`⏳ Chat ${chatID} está pausado. Ignorando mensagem.`);
+        return;
       }
+
+      if (isFromMe) {
+        pausedChats.set(chatID, true);
+        console.log(`⏸️ Chat ${chatID} pausado por 5 minutos`);
+
+        setTimeout(() => {
+          pausedChats.delete(chatID);
+          console.log(`✅ Chat ${chatID} reativado`);
+        }, 5 * 60 * 1000);
+
+        return;
+      }
+
+      console.log("🧠 Chamando ChatGPT...");
+      const response = await getChatGptResponse(message.body);
+
+      await client.sendText(chatID, response);
+      console.log("📨 Mensagem enviada!");
     });
   })
-
   .catch((error) => console.log(error));
-
-// function start(client) {
-//   //   client.onMessage((message) => {
-//   //     if (message.body.toLowerCase() === "oi") {
-//   //       client
-//   //         .sendText(message.from, "ryanzin, como posso ajudar?")
-//   //         .then((result) => {
-//   //           console.log("Result: ", result); //return object success
-//   //         })
-//   //         .catch((erro) => {
-//   //           console.error("Error when sending: ", erro); //return object error
-//   //         });
-//   //     }
-//   //   });
-//   // }
