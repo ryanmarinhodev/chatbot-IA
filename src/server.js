@@ -5,6 +5,7 @@ import getChatGptResponse from "./api.js";
 const pausedChats = new Map();
 
 const MY_NUMBER = "554598250377@c.us";
+const IA_IDENTIFIER = "Assistente";
 
 create({
   session: "Iniciando bot",
@@ -36,6 +37,7 @@ create({
       const chatID = message.from;
       const senderID = message.sender.id;
       const isFromMe = senderID === MY_NUMBER;
+      const isFromIA = message.body.includes(IA_IDENTIFIER);
 
       console.log(`📩 Mensagem recebida de ${chatID}: ${message.body}`);
       console.log(`🔍 Quem enviou: ${senderID} (Eu? ${isFromMe})`);
@@ -45,7 +47,7 @@ create({
         return;
       }
 
-      if (isFromMe) {
+      if (isFromMe && !isFromIA) {
         pausedChats.set(chatID, true);
         console.log(`⏸️ Chat ${chatID} pausado por 5 minutos`);
 
@@ -57,10 +59,15 @@ create({
         return;
       }
 
+      if (isFromIA) {
+        console.log("🤖 Mensagem enviada pela IA. Ignorando.");
+        return;
+      }
+
       console.log("🧠 Chamando ChatGPT...");
       const response = await getChatGptResponse(message.body);
 
-      await client.sendText(chatID, response);
+      await client.sendText(chatID, `${IA_IDENTIFIER}: ${response}`);
       console.log("📨 Mensagem enviada!");
     });
   })
