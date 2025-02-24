@@ -2,26 +2,30 @@ import { writeFile } from "fs";
 import { create } from "@wppconnect-team/wppconnect";
 import getChatGptResponse from "./api.js";
 
-const IA_IDENTIFIER = "Assistente Virtual";
-const PAUSE_DURATION = 1 * 60 * 1000;
+const IA_IDENTIFIER = "[Assistente Virtual]";
+const PAUSE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+// Estado global do bot
 const botState = {
-  isActive: true,
-  pausedUntil: 0,
-  pausedChats: new Map(),
+  isActive: true, // Estado global do bot (ativo/inativo)
+  pausedUntil: 0, // Timestamp de quando o bot deve voltar a ficar ativo
+  pausedChats: new Map(), // Mapa de chats pausados individualmente (Para escábilidade)
 };
 
+// Pausar o bot globalmente
 function pauseBot() {
-  const pausedEndTime = Date.now() + PAUSE_DURATION;
+  const pauseEndTime = Date.now() + PAUSE_DURATION;
   botState.isActive = false;
-  botState.pausedUntil = pausedEndTime;
+  botState.pausedUntil = pauseEndTime;
+  console.log(
+    `🔴 BOT PAUSADO até ${new Date(pauseEndTime).toLocaleTimeString()}`
+  );
 
-  console.log(`Bot PAUSADO até ${new Date(pausedEndTime).toDateString()}`);
-
+  // Configuração do timer para reativar o bot automaticamente
   setTimeout(() => {
-    if (Date.now >= botState.pausedUntil) {
+    if (Date.now() >= botState.pausedUntil) {
       botState.isActive = true;
-      console.log(`BOT REATIVADO automaticamente após pausa`);
+      console.log(`🟢 BOT REATIVADO automaticamente após pausa`);
     }
   }, PAUSE_DURATION);
 }
@@ -49,29 +53,36 @@ create({
 })
   .then((client) => {
     console.log("✅ Bot conectado ao WhatsApp");
+
     client.onAnyMessage(async (message) => {
       if (message.type !== "chat") return;
+
       const chatID = message.from;
       const isFromMe = message.fromMe;
       const isFromIA = isFromMe && message.body.startsWith(`${IA_IDENTIFIER}:`);
       const now = Date.now();
 
+      // Identificação quem enviou mensagem
       console.log(
         `📩 Mensagem de ${
           isFromMe ? (isFromIA ? "🤖 BOT" : "👤 EU") : "👥 CLIENTE"
         }: ${message.body.substring(0, 50)}...`
       );
 
+      // === REGRA 1: Mensagens do bot são sempre ignoradas ===
       if (isFromIA) {
         return;
       }
 
+      // === REGRA 2: Quando EU mando mensagem (não o bot), pausa globalmente ===
       if (isFromMe && !isFromIA) {
         pauseBot();
         return;
       }
 
+      // === REGRA 3: Verifica se o bot está globalmente inativo ===
       if (!botState.isActive) {
+        // Verifica se o tempo de pausa já expirou
         if (now >= botState.pausedUntil) {
           botState.isActive = true;
           console.log(`🟢 Pausa expirada, bot reativado`);
@@ -81,22 +92,28 @@ create({
         }
       }
 
+      // === REGRA 4: Se chegou aqui, o bot está ativo e a mensagem é do cliente ===
       console.log(`🧠 Processando mensagem do cliente...`);
+
       try {
         const response = await getChatGptResponse(message.body, false);
 
+        // Verificação se o bot não foi desativado durante o processamento
         if (!botState.isActive) {
           console.log(
             `❌ Bot foi pausado durante o processamento. Resposta cancelada.`
           );
           return;
         }
+
         await client.sendText(chatID, `${IA_IDENTIFIER}: ${response}`);
         console.log(`✅ Resposta enviada com sucesso!`);
       } catch (error) {
         console.error(`❌ Erro ao processar mensagem:`, error);
       }
     });
+
+    //Comandos via terminal para controle manual
     process.stdin.on("data", (data) => {
       const command = data.toString().trim();
       if (command === "/pause") {
