@@ -28,7 +28,7 @@ create({
     console.log("✅ Bot conectado ao WhatsApp");
 
     client.onAnyMessage(async (message) => {
-      if (message.type !== "chat") return;
+      if (message.type !== "chat" || message.from.endsWith("@g.us")) return;
 
       const chatID = message.from;
       const isFromMe = message.fromMe;
