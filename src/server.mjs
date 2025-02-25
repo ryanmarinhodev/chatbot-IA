@@ -28,7 +28,19 @@ create({
     console.log("✅ Bot conectado ao WhatsApp");
 
     client.onAnyMessage(async (message) => {
-      if (message.type !== "chat" || message.from.endsWith("@g.us")) return;
+      //Verificação se é mensagem de texto
+      if (message.type !== "chat" || !message.body) {
+        await client.sendText(
+          message.from,
+          "🤖 Desculpe, Ryan ainda não me programou para esse tipo de mensagem. Por favor, envie texto."
+        );
+        return;
+      }
+      //Inorando mensagem de grupos
+      if (message.from.endsWith("@g.us")) {
+        console.log("Ignorando mensagem do grupo");
+        return;
+      }
 
       const chatID = message.from;
       const isFromMe = message.fromMe;
@@ -48,7 +60,7 @@ create({
       }
 
       // === REGRA 2: Quando EU mando mensagem (não o bot), pausa globalmente ===
-      if (isFromMe && !isFromIA) {
+      if (isFromMe && !isFromIA && !message.from.endsWith("@g.us")) {
         pauseBot();
         return;
       }
