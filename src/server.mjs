@@ -32,7 +32,7 @@ create({
       if (message.type !== "chat" || !message.body) {
         await client.sendText(
           message.from,
-          "🤖 Desculpe, Ryan ainda não me programou para esse tipo de mensagem. Por favor, envie texto."
+          "[Assistente Virtual]: Desculpe, Ryan ainda não me programou para esse tipo de mensagem. Por favor, envie texto."
         );
         return;
       }
