@@ -3,7 +3,7 @@ export const PAUSE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 // Estado global do bot
 export const botState = {
-  isActive: true, // Estado global do bot (ativo/inativo)
+  isActive: true,
   pausedUntil: 0, // Timestamp de quando o bot deve voltar a ficar ativo
   pausedChats: new Map(), // Mapa de chats pausados individualmente (Para escábilidade)
 };
