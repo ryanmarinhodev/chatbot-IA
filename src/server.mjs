@@ -4,31 +4,36 @@ import getChatGptResponse from "./api.js";
 import { IA_IDENTIFIER, pauseBot, botState } from "./ChatPausados/paused.js";
 
 create({
-  session: "Iniciando bot",
+  session: "Iniciando bot!",
+  whatsappVersion: "2.3000.1020600823x", // Força a versão correta do WhatsApp Web
   catchQR: (base64Qr, asciiQR) => {
-    console.log(asciiQR);
-    var matches = base64Qr.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
-      response = {};
+    console.clear(); // Limpa o terminal antes de exibir o QR
+    console.log("📱 Escaneie o QR Code abaixo para conectar:");
+    console.log(asciiQR); // Exibe o QR no terminal em ASCII
 
-    if (matches.length !== 3) {
-      return new Error("Invalid input string");
+    // Salva o QR como imagem também (opcional)
+    var matches = base64Qr.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      const response = {
+        type: matches[1],
+        data: Buffer.from(matches[2], "base64"),
+      };
+      writeFile("out.png", response.data, "binary", (err) => {
+        if (err) console.error("Erro ao salvar QR como imagem:", err);
+      });
     }
-    response.type = matches[1];
-    response.data = Buffer.from(matches[2], "base64");
-
-    writeFile("out.png", response.data, "binary", function (err) {
-      if (err != null) {
-        console.log(err);
-      }
-    });
   },
-  logQR: false,
+  logQR: false, // Não precisa do log padrão, já estamos logando manualmente
+  headless: true, // Pode ser true ou false – true geralmente funciona, mas teste se tiver problemas
+  devtools: false,
+  useChrome: true,
+  debug: false,
+  browserArgs: ["--no-sandbox"],
 })
   .then((client) => {
     console.log("✅ Bot conectado ao WhatsApp");
 
     client.onAnyMessage(async (message) => {
-      //Verificação se é mensagem de texto
       if (message.type !== "chat" || !message.body) {
         await client.sendText(
           message.from,
@@ -36,7 +41,7 @@ create({
         );
         return;
       }
-      //Inorando mensagem de grupos
+
       if (message.from.endsWith("@g.us")) {
         console.log("Ignorando mensagem do grupo");
         return;
@@ -47,27 +52,20 @@ create({
       const isFromIA = isFromMe && message.body.startsWith(`${IA_IDENTIFIER}:`);
       const now = Date.now();
 
-      // Identificação quem enviou mensagem
       console.log(
         `📩 Mensagem de ${
           isFromMe ? (isFromIA ? "🤖 BOT" : "👤 EU") : "👥 CLIENTE"
         }: ${message.body.substring(0, 50)}...`
       );
 
-      // === REGRA 1: Mensagens do bot são sempre ignoradas ===
-      if (isFromIA) {
-        return;
-      }
+      if (isFromIA) return;
 
-      // === REGRA 2: Quando EU mando mensagem (não o bot), pausa globalmente ===
       if (isFromMe && !isFromIA && !message.from.endsWith("@g.us")) {
         pauseBot();
         return;
       }
 
-      // === REGRA 3: Verifica se o bot está globalmente inativo ===
       if (!botState.isActive) {
-        // Verifica se o tempo de pausa já expirou
         if (now >= botState.pausedUntil) {
           botState.isActive = true;
           console.log(`🟢 Pausa expirada, bot reativado`);
@@ -77,13 +75,11 @@ create({
         }
       }
 
-      // === REGRA 4: Se chegou aqui, o bot está ativo e a mensagem é do cliente ===
       console.log(`🧠 Processando mensagem do cliente...`);
 
       try {
         const response = await getChatGptResponse(message.body, false);
 
-        // Verificação se o bot não foi desativado durante o processamento
         if (!botState.isActive) {
           console.log(
             `❌ Bot foi pausado durante o processamento. Resposta cancelada.`
@@ -98,4 +94,6 @@ create({
       }
     });
   })
-  .catch((error) => console.log(error));
+  .catch((error) => {
+    console.error("❌ Erro ao iniciar o bot:", error);
+  });
